@@ -4,11 +4,12 @@
 #include <iostream>
 #include <algorithm>
 #include <memory>
+#include <list>
 using namespace std;
 
 struct Node {
   int data;
-  vector<shared_ptr<Node>> children;
+  list<shared_ptr<Node>> children;
   shared_ptr<Node> parent;
 };
 
@@ -38,8 +39,8 @@ public:
     const vector<shared_ptr<Node>>::iterator end,
     vector<shared_ptr<Node>>::iterator &split) const {
 
-    auto search_l = *begin;
-    auto search_r = *(end-1);
+    auto search_l = m_first[(*begin)->data-1];
+    auto search_r = m_first[(*(end-1))->data-1];
     auto tree_r = m_traversal_order.size() - 1;
     int idx;
     auto res = find_min(1, 0, tree_r, search_l, search_r, idx);
@@ -47,16 +48,16 @@ public:
     // m_first[split->data-1] >= idx and
     // it does not hold for any preceding node
     split = lower_bound(begin, end, idx,
-      [&m_first](shared_ptr<Node> n, int idx){
-        return m_first[n->data-1] < idx;
+      [this](shared_ptr<Node> n, int idx){
+        return this->m_first[n->data-1] < idx;
       });
     return res;
   }
 
   void sort_nodes(vector<shared_ptr<Node>>::iterator begin, vector<shared_ptr<Node>>::iterator end) const {
     sort(begin, end,
-      [&m_first](shared_ptr<Node> f, shared_ptr<Node> s)
-      {return m_first[f->data-1] < m_first[s->data-1];});
+      [this](shared_ptr<Node> f, shared_ptr<Node> s)
+      {return this->m_first[f->data-1] < this->m_first[s->data-1];});
   }
 private:
   // height of the node
@@ -97,7 +98,7 @@ private:
       m_segment_tree[i] = s_node;
   }
 
-  shared_ptr<Node> find_min(int i, int tree_l, int tree_r, int search_l, int search_r, int &idx) {
+  shared_ptr<Node> find_min(int i, int tree_l, int tree_r, int search_l, int search_r, int &idx) const {
     if (tree_l == search_l && tree_r == search_r) {
       idx = tree_l;
       return m_segment_tree[i];
@@ -122,14 +123,14 @@ private:
 struct QueryNode {
   QueryNode(shared_ptr<Node> b): base(b) {}
   shared_ptr<Node> base;
-  vector<shared_ptr<QueryNode>> children;
+  list<shared_ptr<QueryNode>> children;
 };
 
 void construct_query_tree(
   const vector<shared_ptr<Node>>::iterator begin,
   const vector<shared_ptr<Node>>::iterator end,
   const LCA &lca,
-  shared_ptr<QueryNode> &root;
+  shared_ptr<QueryNode> &root
   ) {
   if (begin == end)
     return;
@@ -138,20 +139,20 @@ void construct_query_tree(
     return;
   }
 
-  vector<Node>::iterator split;
-  shared_ptr<Node> cur_lca = lca(query_nodes.begin(), query_nodes.end(), split);
+  vector<shared_ptr<Node>>::iterator split;
+  shared_ptr<Node> cur_lca = lca(begin, end, split);
 
   shared_ptr<QueryNode> cur_root;
   if (root->base == cur_lca) // the same root
     cur_root = root;
   else {
-    cur_root = make_shared<QueryNode>(lca);
+    cur_root = make_shared<QueryNode>(cur_lca);
     root->children.push_back(cur_root);
   }
 
   if (*split == cur_lca) { // the query node is in a set of LCA
     construct_query_tree(begin, split, lca, cur_root);
-    cur_root->childern.push_back(make_shared<QueryNode>(cur_lca));
+    cur_root->children.push_back(make_shared<QueryNode>(cur_lca));
     construct_query_tree(split+1, end, lca, cur_root);
   } else {
     construct_query_tree(begin, split, lca, cur_root);
@@ -167,7 +168,7 @@ int main() {
   for (auto i = 0; i < N; ++i)
     nodes[i]->data = i+1;
   for (auto i = 0; i < N - 1; ++i) {
-    auto f, s;
+    int f, s;
     cin >> f >> s;
     nodes[f-1]->children.push_back(nodes[s-1]);
     nodes[s-1]->children.push_back(nodes[f-1]);
@@ -184,7 +185,7 @@ int main() {
       to_process.push_back(el);
     }
   }
-  LCA lca(nodes, N);
+  LCA lca(root, N);
   while (Q--) {
     int K, i;
     cin >> K;
