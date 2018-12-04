@@ -19,9 +19,30 @@ public:
     m_depth.resize(N);
     m_first.resize(N);
     dfs(root, 0);
+    
+    cerr << "m_depth: [";
+    for (auto el: m_depth)
+      cerr << el << ' ';
+    cerr << ']' << endl;
+
+    cerr << "m_traversal_order: [";
+    for (auto el: m_traversal_order)
+      cerr << el->data << ' ';
+    cerr << ']' << endl;
+
+    cerr << "m_first: [";
+    for (auto el: m_first)
+      cerr << el << ' ';
+    cerr << ']' << endl;
+
     auto K = m_traversal_order.size();
     m_segment_tree.resize(K * 4);
     fill_segment_tree(1, 0, K - 1);
+
+    cerr << "m_segment_tree: [";
+    for (auto el: m_segment_tree)
+      cerr << (el?el->data:-1) << ' ';
+    cerr << ']' << endl;
   }
 
   shared_ptr<Node> operator()(shared_ptr<Node> f, shared_ptr<Node> s) const {
@@ -164,9 +185,11 @@ int main() {
   int N, Q;
   cin >> N >> Q;
   // read nodes and edges
-  vector<shared_ptr<Node>> nodes(N, make_shared<Node>());
-  for (auto i = 0; i < N; ++i)
+  vector<shared_ptr<Node>> nodes(N);
+  for (auto i = 0; i < N; ++i) {
+    nodes[i] = make_shared<Node>();
     nodes[i]->data = i+1;
+  }
   for (auto i = 0; i < N - 1; ++i) {
     int f, s;
     cin >> f >> s;
