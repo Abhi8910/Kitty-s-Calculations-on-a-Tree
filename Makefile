@@ -1,5 +1,7 @@
-all: main.cpp
+main: main.cpp
 	g++ --std=c++1z main.cpp -o main
 
-test0: all
+all: main
+
+test0: main
 	cat test0.txt | ./main

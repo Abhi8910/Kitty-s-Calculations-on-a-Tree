@@ -5,7 +5,10 @@
 #include <algorithm>
 #include <memory>
 #include <list>
+#include <numeric>
 using namespace std;
+
+//#define DEBUG
 
 struct Node {
   int data;
@@ -19,7 +22,8 @@ public:
     m_depth.resize(N);
     m_first.resize(N);
     dfs(root, 0);
-    
+   
+#ifdef DEBUG
     cerr << "m_depth: [";
     for (auto el: m_depth)
       cerr << el << ' ';
@@ -34,15 +38,18 @@ public:
     for (auto el: m_first)
       cerr << el << ' ';
     cerr << ']' << endl;
+#endif
 
     auto K = m_traversal_order.size();
     m_segment_tree.resize(K * 4);
     fill_segment_tree(1, 0, K - 1);
 
+#ifdef DEBUG
     cerr << "m_segment_tree: [";
     for (auto el: m_segment_tree)
       cerr << (el?el->data:-1) << ' ';
     cerr << ']' << endl;
+#endif
   }
 
   shared_ptr<Node> operator()(shared_ptr<Node> f, shared_ptr<Node> s) const {
@@ -79,6 +86,10 @@ public:
     sort(begin, end,
       [this](shared_ptr<Node> f, shared_ptr<Node> s)
       {return this->m_first[f->data-1] < this->m_first[s->data-1];});
+  }
+
+  int get_depth(shared_ptr<Node> node) const {
+    return m_depth[node->data - 1];
   }
 private:
   // height of the node
@@ -142,14 +153,14 @@ private:
 };
 
 struct QueryNode {
-  QueryNode(shared_ptr<Node> b):
-    base(b), tree_res(0), node_sum(0), tree_weighted_sum(0)
+  QueryNode(shared_ptr<Node> b, int d):
+    base(b), node_sum(0), tree_weighted_sum(0), depth(d)
   {}
   shared_ptr<Node> base;
   list<shared_ptr<QueryNode>> children;
-  unsigned long long tree_res;
   unsigned long long node_sum;
   unsigned long long tree_weighted_sum;
+  unsigned int depth;
 };
 
 void construct_query_tree(
@@ -161,7 +172,7 @@ void construct_query_tree(
   if (begin == end)
     return;
   if (end - begin == 1) { // the single node
-    root->children.push_back(make_shared<QueryNode>(*begin));
+    root->children.push_back(make_shared<QueryNode>(*begin, lca.get_depth(*begin)));
     return;
   }
 
@@ -172,18 +183,54 @@ void construct_query_tree(
   if (root->base == cur_lca) // the same root
     cur_root = root;
   else {
-    cur_root = make_shared<QueryNode>(cur_lca);
+    cur_root = make_shared<QueryNode>(cur_lca, lca.get_depth(cur_lca));
     root->children.push_back(cur_root);
   }
 
   if (*split == cur_lca) { // the query node is in a set of LCA
     construct_query_tree(begin, split, lca, cur_root);
-    cur_root->children.push_back(make_shared<QueryNode>(cur_lca));
+    cur_root->children.push_back(make_shared<QueryNode>(cur_lca, lca.get_depth(cur_lca)));
     construct_query_tree(split+1, end, lca, cur_root);
   } else {
     construct_query_tree(begin, split, lca, cur_root);
     construct_query_tree(split, end, lca, cur_root);
   }
+}
+
+unsigned long long solve(shared_ptr<QueryNode> root) {
+  if (root->children.empty()) { // leaf
+    root->node_sum = root->base->data;
+    return 0;
+  }
+  // subtree
+  vector<unsigned long long> children_res;
+  vector<unsigned long long> children_node_sum;
+  vector<unsigned long long> children_weighted_sum;
+
+  root->tree_weighted_sum = 0;
+  for (auto el: root->children) {
+    children_res.push_back(solve(el));
+    children_node_sum.push_back(el->node_sum);
+    auto rel_depth = el->depth - root->depth;
+    children_weighted_sum.push_back(
+        el->tree_weighted_sum + el->node_sum * rel_depth);
+  }
+  root->node_sum = accumulate(
+      children_node_sum.begin(),
+      children_node_sum.end(), 0ULL);
+  root->tree_weighted_sum = accumulate(
+      children_weighted_sum.begin(),
+      children_weighted_sum.end(), 0ULL);
+  
+  auto n = children_res.size();
+
+  auto res = accumulate(
+      children_res.begin(),
+      children_res.end(), 0ULL);
+  for (auto i = 0; i < n; ++i)
+    res += children_weighted_sum[i] *
+      (root->node_sum - children_node_sum[i]);
+  return res;
 }
 
 int main() {
@@ -224,14 +271,11 @@ int main() {
     }
     //construct query tree from query nodes and their LCAs
     lca.sort_nodes(query_nodes.begin(), query_nodes.end());
-    auto root = make_shared<QueryNode>(nullptr);
+    auto root = make_shared<QueryNode>(nullptr, 0);
     construct_query_tree(query_nodes.begin(), query_nodes.end(), lca, root);
 
     root = root->children.front();
-    if (root->children.empty()) {
-      cout << 0 << endl;
-      continue;
-    }
+#ifdef DEBUG
     list<shared_ptr<QueryNode>> to_process(1, root);
     while (!to_process.empty()) {
       auto cur_node = to_process.front();
@@ -241,6 +285,8 @@ int main() {
         cerr << c->base->data << ' ';
       cerr << "]" << endl;
     }
+#endif
+    cout << solve(root) << endl;
   }
   return 0;
 }
