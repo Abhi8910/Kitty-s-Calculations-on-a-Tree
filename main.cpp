@@ -142,9 +142,14 @@ private:
 };
 
 struct QueryNode {
-  QueryNode(shared_ptr<Node> b): base(b) {}
+  QueryNode(shared_ptr<Node> b):
+    base(b), tree_res(0), node_sum(0), tree_weighted_sum(0)
+  {}
   shared_ptr<Node> base;
   list<shared_ptr<QueryNode>> children;
+  unsigned long long tree_res;
+  unsigned long long node_sum;
+  unsigned long long tree_weighted_sum;
 };
 
 void construct_query_tree(
