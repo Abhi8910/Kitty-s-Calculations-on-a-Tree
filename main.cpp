@@ -175,9 +175,14 @@ void construct_query_tree(
     root->children.push_back(make_shared<QueryNode>(*begin, lca.get_depth(*begin)));
     return;
   }
+  for (auto it = begin; it != end; ++it)
+    cerr << (*it)->data << ' ';
+  cerr << endl;
 
+  cerr << 1;
   vector<shared_ptr<Node>>::iterator split;
   shared_ptr<Node> cur_lca = lca(begin, end, split);
+  cerr << '-' << split - begin;
 
   shared_ptr<QueryNode> cur_root;
   if (root->base == cur_lca) // the same root
@@ -185,7 +190,9 @@ void construct_query_tree(
   else {
     cur_root = make_shared<QueryNode>(cur_lca, lca.get_depth(cur_lca));
     root->children.push_back(cur_root);
+    cerr << '-' << 3;
   }
+  cerr << endl;
 
   if (*split == cur_lca) { // the query node is in a set of LCA
     construct_query_tree(begin, split, lca, cur_root);
