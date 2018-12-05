@@ -8,7 +8,7 @@
 #include <numeric>
 using namespace std;
 
-//#define DEBUG
+#define DEBUG
 
 struct Node {
   int data;
