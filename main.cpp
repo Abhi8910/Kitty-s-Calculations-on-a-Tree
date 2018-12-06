@@ -8,9 +8,9 @@
 #include <numeric>
 using namespace std;
 
-//#define DEBUG
+#define DEBUG
 
-const unsigned long long C = 1000000000+7;
+const unsigned long long C = 1000000000 + 7;
 
 struct Node {
   int data;
@@ -292,21 +292,34 @@ unsigned long long solve(shared_ptr<QueryNode> root) {
     children_weighted_sum.push_back(
         (el->tree_weighted_sum + el->node_sum * rel_depth) % C);
   }
+  root->node_sum = 0;
+  for (auto el: children_node_sum)
+    root->node_sum = (root->node_sum + el) % C;
+  root->tree_weighted_sum = 0;
+  for (auto el: children_weighted_sum)
+    root->tree_weighted_sum = (root->tree_weighted_sum + el) % C;
+  /*
   root->node_sum = accumulate(
       children_node_sum.begin(),
       children_node_sum.end(), 0ULL) % C;
   root->tree_weighted_sum = accumulate(
       children_weighted_sum.begin(),
       children_weighted_sum.end(), 0ULL) % C;
+  */
   
   auto n = children_res.size();
 
+  unsigned long long res = 0;
+  for (auto el: children_res)
+    res = (res + el) % C;
+  /*
   auto res = accumulate(
       children_res.begin(),
       children_res.end(), 0ULL) % C;
+  */
   for (auto i = 0; i < n; ++i)
-    res += children_weighted_sum[i] *
-      (root->node_sum - children_node_sum[i]) % C;
+    res = (res + children_weighted_sum[i] *
+      ((root->node_sum - children_node_sum[i] + C) % C)) % C;
   return res;
 }
 
