@@ -10,3 +10,9 @@ test0: main
 
 test1: main
 	cat test1.txt | ./main
+
+test2: main
+	cat test2.txt | ./main
+
+test: main
+	find -type f -name "test*.txt" | xargs -I {} sh -c "cat {} | ./main"

@@ -8,7 +8,9 @@
 #include <numeric>
 using namespace std;
 
-#define DEBUG
+//#define DEBUG
+
+const unsigned long long C = 1000000000+7;
 
 struct Node {
   int data;
@@ -41,7 +43,8 @@ public:
 #endif
 
     auto K = m_traversal_order.size();
-    m_segment_tree.resize(K * 4);
+    m_segment_tree.resize(4 * K);
+    m_segment_tree_idx.resize(4 * K);
     fill_segment_tree(1, 0, K - 1);
 
 #ifdef DEBUG
@@ -111,6 +114,11 @@ private:
   vector<int> m_first;
   // a segment tree
   vector<shared_ptr<Node>> m_segment_tree;
+  // a location of the lca in the m_traversal order.
+  // as an alternative this vector could be combined with m_segment_tree
+  // in the form of vector<pair<shared_ptr<Node>, int>> to store
+  // an lca and its location in the m_traversal_order
+  vector<int> m_segment_tree_idx;
 
   void dfs(shared_ptr<Node> root, int h) {
     auto idx = root->data-1;
@@ -126,6 +134,7 @@ private:
   void fill_segment_tree(int i, int l, int r) {
     if (l == r) {
       m_segment_tree[i] = m_traversal_order[l];
+      m_segment_tree_idx[i] = l;
       return;
     }
     auto k = (l + r) / 2;
@@ -135,10 +144,14 @@ private:
     fill_segment_tree(s, k + 1, r);
     auto f_node = m_segment_tree[f];
     auto s_node = m_segment_tree[s];
-    if (m_depth[f_node->data-1] < m_depth[s_node->data-1])
+    if (m_depth[f_node->data-1] < m_depth[s_node->data-1]) {
       m_segment_tree[i] = f_node;
-    else
+      m_segment_tree_idx[i] = m_segment_tree_idx[f];
+    }
+    else {
       m_segment_tree[i] = s_node;
+      m_segment_tree_idx[i] = m_segment_tree_idx[s];
+    }
   }
 
   shared_ptr<Node> find_min(int i, int tree_l, int tree_r, int search_l, int search_r, int &idx) const {
@@ -148,13 +161,14 @@ private:
       << "current segment of the segment tree [" << tree_l << ", " << tree_r << ']' << endl;
 #endif
     if (tree_l == search_l && tree_r == search_r) {
-      idx = tree_l;
+      idx = m_segment_tree_idx[i];
       return m_segment_tree[i];
     }
     auto k = (tree_l + tree_r) / 2;
     if (k < search_l)
 #ifdef DEBUG
     {
+      cerr << "Redirect to searching on [" << k+1 << ", " << tree_r << ']' << endl;
       auto res = find_min(2*i+1, k+1, tree_r, search_l, search_r, idx);
       cerr << "The result node: " << res->data << endl;
       cerr << "Index of the node in the traversal order: " << idx << endl;
@@ -166,14 +180,20 @@ private:
     if (k >= search_r)
 #ifdef DEBUG
     {
+      cerr << "Redirect to searching on [" << tree_l << ", " << k << ']' << endl;
       auto res = find_min(2*i, tree_l, k, search_l, search_r, idx);
       cerr << "The result node: " << res->data << endl;
       cerr << "Index of the node in the traversal order: " << idx << endl;
       return res;
     }
-#endif    
+#else
       return find_min(2*i, tree_l, k, search_l, search_r, idx);
+#endif    
     int l_idx, r_idx;
+#ifdef DEBUG
+    cerr << "Redirect to searching on [" << tree_l << ", " << k
+      << "] and [" << k+1 << ", " <<tree_r << ']' << endl;
+#endif
     auto l_res = find_min(2*i, tree_l, k, search_l, k, l_idx);
     auto r_res = find_min(2*i+1, k+1, tree_r, k+1, search_r, r_idx);
     if (m_depth[l_res->data-1] < m_depth[r_res->data-1]) {
@@ -270,23 +290,23 @@ unsigned long long solve(shared_ptr<QueryNode> root) {
     children_node_sum.push_back(el->node_sum);
     auto rel_depth = el->depth - root->depth;
     children_weighted_sum.push_back(
-        el->tree_weighted_sum + el->node_sum * rel_depth);
+        (el->tree_weighted_sum + el->node_sum * rel_depth) % C);
   }
   root->node_sum = accumulate(
       children_node_sum.begin(),
-      children_node_sum.end(), 0ULL);
+      children_node_sum.end(), 0ULL) % C;
   root->tree_weighted_sum = accumulate(
       children_weighted_sum.begin(),
-      children_weighted_sum.end(), 0ULL);
+      children_weighted_sum.end(), 0ULL) % C;
   
   auto n = children_res.size();
 
   auto res = accumulate(
       children_res.begin(),
-      children_res.end(), 0ULL);
+      children_res.end(), 0ULL) % C;
   for (auto i = 0; i < n; ++i)
     res += children_weighted_sum[i] *
-      (root->node_sum - children_node_sum[i]);
+      (root->node_sum - children_node_sum[i]) % C;
   return res;
 }
 
