@@ -8,7 +8,7 @@
 #include <numeric>
 using namespace std;
 
-#define DEBUG
+//#define DEBUG
 
 const unsigned long long C = 1000000000 + 7;
 
