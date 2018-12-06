@@ -67,11 +67,22 @@ public:
     const vector<shared_ptr<Node>>::iterator end,
     vector<shared_ptr<Node>>::iterator &split) const {
 
+#ifdef DEBUG
+    cerr << "Computing CLA for a set of nodes: [ ";
+    for (auto it = begin; it != end; ++it)
+      cerr << (*it)->data << ' ';
+    cerr << ']' << endl;
+#endif
     auto search_l = m_first[(*begin)->data-1];
     auto search_r = m_first[(*(end-1))->data-1];
     auto tree_r = m_traversal_order.size() - 1;
     int idx;
     auto res = find_min(1, 0, tree_r, search_l, search_r, idx);
+#ifdef DEBUG
+    cerr << "search left: " << search_l << endl
+      << "search right: " << search_r << endl
+      << "split index: " << idx << endl;
+#endif
     // split the input vector such that 
     // m_first[split->data-1] >= idx and
     // it does not hold for any preceding node
@@ -131,23 +142,53 @@ private:
   }
 
   shared_ptr<Node> find_min(int i, int tree_l, int tree_r, int search_l, int search_r, int &idx) const {
+#ifdef DEBUG
+    cerr << "Searching for the node with the lowest depth with the segment tree" << endl
+      << "segment in traversal order [" << search_l << ", " << search_r << ']' << endl
+      << "current segment of the segment tree [" << tree_l << ", " << tree_r << ']' << endl;
+#endif
     if (tree_l == search_l && tree_r == search_r) {
       idx = tree_l;
       return m_segment_tree[i];
     }
     auto k = (tree_l + tree_r) / 2;
     if (k < search_l)
+#ifdef DEBUG
+    {
+      auto res = find_min(2*i+1, k+1, tree_r, search_l, search_r, idx);
+      cerr << "The result node: " << res->data << endl;
+      cerr << "Index of the node in the traversal order: " << idx << endl;
+      return res;
+    }
+#else
       return find_min(2*i+1, k+1, tree_r, search_l, search_r, idx);
+#endif
     if (k >= search_r)
+#ifdef DEBUG
+    {
+      auto res = find_min(2*i, tree_l, k, search_l, search_r, idx);
+      cerr << "The result node: " << res->data << endl;
+      cerr << "Index of the node in the traversal order: " << idx << endl;
+      return res;
+    }
+#endif    
       return find_min(2*i, tree_l, k, search_l, search_r, idx);
     int l_idx, r_idx;
     auto l_res = find_min(2*i, tree_l, k, search_l, k, l_idx);
     auto r_res = find_min(2*i+1, k+1, tree_r, k+1, search_r, r_idx);
     if (m_depth[l_res->data-1] < m_depth[r_res->data-1]) {
       idx = l_idx;
+#ifdef DEBUG
+      cerr << "The result node: " << l_res->data << endl;
+      cerr << "Index of the node in the traversal order: " << idx << endl;
+#endif      
       return l_res;
     }
     idx = r_idx;
+#ifdef DEBUG
+    cerr << "The result node: " << r_res->data << endl;
+    cerr << "Index of the node in the traversal order: " << idx << endl;
+#endif      
     return r_res;
   }
 };
@@ -175,14 +216,25 @@ void construct_query_tree(
     root->children.push_back(make_shared<QueryNode>(*begin, lca.get_depth(*begin)));
     return;
   }
+#ifdef DEBUG
+  cerr << "Choosing root for [ ";
   for (auto it = begin; it != end; ++it)
     cerr << (*it)->data << ' ';
-  cerr << endl;
+  cerr << "]" << endl;
+#endif
 
-  cerr << 1;
   vector<shared_ptr<Node>>::iterator split;
   shared_ptr<Node> cur_lca = lca(begin, end, split);
-  cerr << '-' << split - begin;
+#ifdef DEBUG
+  cerr << "root is " << cur_lca->data << endl;
+  cerr << "split into [ ";
+  for (auto it = begin; it != split; ++it)
+    cerr << (*it)->data << ' ';
+  cerr << "] and [ ";
+  for (auto it = split; it != end; ++it)
+    cerr << (*it)->data << ' ';
+  cerr << ']' << endl;
+#endif
 
   shared_ptr<QueryNode> cur_root;
   if (root->base == cur_lca) // the same root
@@ -190,9 +242,7 @@ void construct_query_tree(
   else {
     cur_root = make_shared<QueryNode>(cur_lca, lca.get_depth(cur_lca));
     root->children.push_back(cur_root);
-    cerr << '-' << 3;
   }
-  cerr << endl;
 
   if (*split == cur_lca) { // the query node is in a set of LCA
     construct_query_tree(begin, split, lca, cur_root);
